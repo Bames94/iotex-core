@@ -38,7 +38,7 @@ type (
 var (
 	// DefaultConfig is the default config
 	DefaultConfig = Config{
-		ActionChanSize:             5000,
+		ActionChanSize:             20000,
 		BlockChanSize:              1000,
 		BlockSyncChanSize:          400,
 		ProcessSyncRequestInterval: 0 * time.Second,
@@ -164,7 +164,7 @@ func (d *IotxDispatcher) Start(ctx context.Context) error {
 	log.L().Info("Starting dispatcher.")
 
 	// setup mutiple action consumers to enqueue actions into actpool
-	for i := 0; i < cap(d.actionChan)/5; i++ {
+	for i := 0; i < cap(d.actionChan)/10; i++ {
 		d.wg.Add(1)
 		go d.actionHandler()
 	}
@@ -270,7 +270,7 @@ func (d *IotxDispatcher) handleActionMsg(m *actionMsg) {
 		d.updateEventAudit(iotexrpc.MessageType_ACTION)
 		if err := subscriber.HandleAction(m.ctx, m.action); err != nil {
 			requestMtc.WithLabelValues("AddAction", "false").Inc()
-			log.L().Debug("Handle action request error.", zap.Error(err))
+			log.L().Error("Handle action request error.", zap.Error(err))
 		}
 		d.actionChanLock.RLock()
 		defer d.actionChanLock.RUnlock()
@@ -343,7 +343,7 @@ func (d *IotxDispatcher) dispatchAction(ctx context.Context, chainID uint32, msg
 		}
 		l++
 	} else {
-		log.L().Warn("dispatcher action channel is full, drop an event.")
+		log.L().Panic("dispatcher action channel is full, drop an event.")
 	}
 	subscriber.ReportFullness(ctx, iotexrpc.MessageType_ACTION, float32(l)/float32(c))
 }
