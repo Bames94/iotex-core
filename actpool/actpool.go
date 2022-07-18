@@ -232,6 +232,8 @@ func (ap *actPool) PendingActionMap() map[string][]action.SealedEnvelope {
 			ret[w.sender] = w.acts
 		}
 	}
+
+	log.L().Info("DebugBenchmark", zap.Uint64("pendingActs", totalAccounts))
 	return ret
 }
 

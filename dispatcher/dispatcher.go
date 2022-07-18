@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -210,11 +211,15 @@ func (d *IotxDispatcher) EventAudit() map[iotexrpc.MessageType]int {
 	return snapshot
 }
 
+var _totalActs uint64 = 0
+
 func (d *IotxDispatcher) actionHandler() {
 	d.wg.Done()
 	for {
 		select {
 		case a := <-d.actionChan:
+			atomic.AddUint64(&_totalActs, 1)
+			log.L().Info("DebugBenchmark", zap.Uint64("acts handled", atomic.LoadUint64(&_totalActs)))
 			d.handleActionMsg(a)
 		case <-d.quit:
 			log.L().Info("action handler is terminated.")
@@ -335,6 +340,7 @@ func (d *IotxDispatcher) dispatchAction(ctx context.Context, chainID uint32, msg
 	defer d.actionChanLock.Unlock()
 	l := len(d.actionChan)
 	c := cap(d.actionChan)
+	log.L().Info("DebugBenchmark", zap.Int("acts received", l), zap.Int("chan length", c))
 	if l < c {
 		d.actionChan <- &actionMsg{
 			ctx:     ctx,
@@ -343,7 +349,7 @@ func (d *IotxDispatcher) dispatchAction(ctx context.Context, chainID uint32, msg
 		}
 		l++
 	} else {
-		log.L().Panic("dispatcher action channel is full, drop an event.")
+		log.L().Error("DebugBenchmark", zap.String("msg", "dispatcher action channel is full, drop an event."))
 	}
 	subscriber.ReportFullness(ctx, iotexrpc.MessageType_ACTION, float32(l)/float32(c))
 }
